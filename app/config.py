@@ -43,7 +43,8 @@ def _parse_int(env_name: str, default: int) -> int:
 
 
 def _load_settings() -> Settings:
-    csv_path = Path("C:/Users/vinmo/Downloads/geo-research/dataset-derived-prompts/results_filtered_all_dumps_IN_PROGRESS.csv").expanduser().resolve()
+    csv_env = os.getenv("CSV_PATH", "data/sample_questions.csv")
+    csv_path = Path(csv_env).expanduser().resolve()
 
     if not csv_path.exists():
         raise FileNotFoundError(

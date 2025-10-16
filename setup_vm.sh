@@ -8,17 +8,28 @@ APP_PASSWORD=$2
 # 1. Install dependencies
 # -----------------------
 sudo apt-get update
-sudo apt-get install -y python3-venv python3-pip nginx apache2-utils
+sudo apt-get install -y python3-venv python3-pip nginx apache2-utils google-cloud-sdk
 
-# 2. Set up the application environment
-# -------------------------------------
+# This command assumes the code has been checked out in the home directory
 cd ~/question-app
+
+# 2. Download the dataset from GCS
+# ----------------------------------
+echo ">>> Creating data directory..."
+mkdir -p data
+echo ">>> Downloading dataset from GCS..."
+# This requires the VM to have read permissions for the GCS bucket.
+# Compute Engine default service accounts usually have this for buckets in the same project.
+gcloud storage cp gs://vincent-fineweb-data/results/results_filtered_STRICT.csv data/source.csv
+
+# 3. Set up the application environment
+# -------------------------------------
 python3 -m venv venv
 source venv/bin/activate
 pip install --upgrade pip
 pip install -r requirements.txt
 
-# 3. Configure the systemd service
+# 4. Configure the systemd service
 # --------------------------------
 # This will run the app as a background service and restart it on failure.
 sudo bash -c "cat > /etc/systemd/system/question-app.service" << EOL
@@ -42,7 +53,7 @@ sudo systemctl daemon-reload
 sudo systemctl enable question-app
 sudo systemctl start question-app
 
-# 4. Configure Nginx as a reverse proxy with basic authentication
+# 5. Configure Nginx as a reverse proxy with basic authentication
 # ---------------------------------------------------------------
 sudo htpasswd -cb /etc/nginx/.htpasswd "$APP_USERNAME" "$APP_PASSWORD"
 
