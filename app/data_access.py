@@ -33,9 +33,16 @@ class DatasetGateway:
             # DuckDB doesn't like prepared statements for read_csv_auto
             # so we'll escape the path and embed it directly.
             escaped_csv_path = str(self.csv_path).replace("'", "''")
-            self._conn.execute(
-                f"CREATE OR REPLACE VIEW dataset AS SELECT * FROM read_csv_auto('{escaped_csv_path}', HEADER=TRUE, SAMPLE_SIZE=100000)"
-            )
+
+            # The QUALIFY clause partitions by question and takes the first row for each,
+            # effectively de-duplicating the dataset based on the question text.
+            dedupe_query = f"""
+                CREATE OR REPLACE VIEW dataset AS
+                SELECT *
+                FROM read_csv_auto('{escaped_csv_path}', HEADER=TRUE, SAMPLE_SIZE=100000)
+                QUALIFY ROW_NUMBER() OVER (PARTITION BY question) = 1
+            """
+            self._conn.execute(dedupe_query)
 
     def _fetch_columns(self) -> List[Dict[str, Any]]:
         with self._lock:
