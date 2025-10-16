@@ -27,7 +27,7 @@ class DatasetGateway:
     # private helpers
     # ------------------------------------------------------------------
     def _register_view(self) -> None:
-        """Register the CSV as an in-memory DuckDB view."""
+        """Register the CSV as a de-duplicated in-memory DuckDB table."""
 
         with self._lock:
             # DuckDB doesn't like prepared statements for read_csv_auto
@@ -36,8 +36,10 @@ class DatasetGateway:
 
             # The QUALIFY clause partitions by question and takes the first row for each,
             # effectively de-duplicating the dataset based on the question text.
+            # By creating a TABLE instead of a VIEW, we materialize the de-duplicated
+            # results once at startup for much better query performance.
             dedupe_query = f"""
-                CREATE OR REPLACE VIEW dataset AS
+                CREATE OR REPLACE TABLE dataset AS
                 SELECT *
                 FROM read_csv_auto('{escaped_csv_path}', HEADER=TRUE, SAMPLE_SIZE=100000)
                 QUALIFY ROW_NUMBER() OVER (PARTITION BY question) = 1
@@ -88,7 +90,7 @@ class DatasetGateway:
         return self._row_count
 
     def refresh(self) -> None:
-        """Reload the DuckDB view if the CSV has changed."""
+        """Reload the DuckDB table if the CSV has changed."""
 
         self._row_count = None
         self._register_view()
