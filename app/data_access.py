@@ -15,13 +15,7 @@ class DatasetGateway:
     def __init__(self, csv_path: Path):
         self.csv_path = csv_path
         self._lock = Lock()
-
-        # Use a file-based database to allow DuckDB to spill to disk if memory is low.
-        # This is crucial for handling large datasets during startup.
-        db_path = "data/app.db"
-        Path("data").mkdir(exist_ok=True)
-        self._conn = duckdb.connect(database=db_path, read_only=False)
-
+        self._conn = duckdb.connect(database=":memory:")
         self._conn.execute("SET GLOBAL memory_limit='8GB'")
         self._register_view()
         self._columns = self._fetch_columns()
@@ -33,24 +27,15 @@ class DatasetGateway:
     # private helpers
     # ------------------------------------------------------------------
     def _register_view(self) -> None:
-        """Register the CSV as a de-duplicated in-memory DuckDB table."""
+        """Register the CSV as an in-memory DuckDB view."""
 
         with self._lock:
             # DuckDB doesn't like prepared statements for read_csv_auto
             # so we'll escape the path and embed it directly.
             escaped_csv_path = str(self.csv_path).replace("'", "''")
-
-            # The QUALIFY clause partitions by question and takes the first row for each,
-            # effectively de-duplicating the dataset based on the question text.
-            # By creating a TABLE instead of a VIEW, we materialize the de-duplicated
-            # results once at startup for much better query performance.
-            dedupe_query = f"""
-                CREATE OR REPLACE TABLE dataset AS
-                SELECT *
-                FROM read_csv_auto('{escaped_csv_path}', HEADER=TRUE, SAMPLE_SIZE=100000)
-                QUALIFY ROW_NUMBER() OVER (PARTITION BY question) = 1
-            """
-            self._conn.execute(dedupe_query)
+            self._conn.execute(
+                f"CREATE OR REPLACE VIEW dataset AS SELECT * FROM read_csv_auto('{escaped_csv_path}', HEADER=TRUE, SAMPLE_SIZE=100000)"
+            )
 
     def _fetch_columns(self) -> List[Dict[str, Any]]:
         with self._lock:
@@ -96,7 +81,7 @@ class DatasetGateway:
         return self._row_count
 
     def refresh(self) -> None:
-        """Reload the DuckDB table if the CSV has changed."""
+        """Reload the DuckDB view if the CSV has changed."""
 
         self._row_count = None
         self._register_view()
