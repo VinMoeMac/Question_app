@@ -137,7 +137,44 @@ main {
   border-top-left-radius: 0;
   border-bottom-left-radius: 0;
   transition: background-color 0.2s ease-in-out;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
 }
+
+.search-input-group button.loading {
+  cursor: wait;
+  background-color: var(--accent-dark);
+}
+
+.search-input-group button .button-text {
+  transition: opacity 0.2s ease-in-out;
+}
+
+.search-input-group button.loading .button-text {
+  opacity: 0.5;
+}
+
+.spinner {
+  display: none;
+  width: 1.25rem;
+  height: 1.25rem;
+  border: 3px solid rgba(255, 255, 255, 0.3);
+  border-radius: 50%;
+  border-top-color: #fff;
+  animation: spin 1s ease-in-out infinite;
+}
+
+.search-input-group button.loading .spinner {
+  display: block;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 
 .search-input-group button:hover {
   background-color: var(--accent-dark);

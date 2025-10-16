@@ -22,6 +22,7 @@ const elements = {
   sortBy: document.getElementById('sort-by'),
   sortDir: document.getElementById('sort-dir'),
   search: document.getElementById('search'),
+  searchButton: document.querySelector('#toolbar button[type="submit"]'),
   refresh: document.getElementById('refresh'),
   toolbar: document.getElementById('toolbar'),
 };
@@ -201,6 +202,9 @@ async function loadMetadata() {
 }
 
 async function loadRows() {
+  elements.searchButton.classList.add('loading');
+  elements.searchButton.disabled = true;
+
   const params = new URLSearchParams();
   params.set('page', String(state.page));
   params.set('page_size', String(state.pageSize));
@@ -218,10 +222,13 @@ async function loadRows() {
     updatePagination({ ...payload, page_size: state.pageSize });
   } catch (error) {
     console.error(error);
-    const colSpan = columns.length > 0 ? columns.length : 1;
+    const colSpan = columns.length > 0 ? 2 : 1;
     elements.tableBody.innerHTML = `<tr><td class="placeholder" colspan="${colSpan}">${error.message}</td></tr>`;
     elements.pagination.textContent = '';
     elements.filteredCount.textContent = '';
+  } finally {
+    elements.searchButton.classList.remove('loading');
+    elements.searchButton.disabled = false;
   }
 }
 
