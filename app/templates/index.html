@@ -10,11 +10,9 @@
     <header class="page-header">
       <div>
         <h1>{{ settings.app_title }}</h1>
-        <p class="subtitle">
-          Explore tens of millions of question-focused rows distilled from billions of
-          FineWeb documents. Optimised for large CSV files generated with the Stage 1
-          and Stage 2 pipelines.
-        </p>
+        <div class="header-meta">
+          <span id="total-questions">0</span> questions
+        </div>
       </div>
       <div class="dataset-meta">
         <span class="label">Active CSV:</span>
@@ -23,65 +21,47 @@
     </header>
 
     <main>
-      <section class="info-panel" id="stats">
-        <div class="card">
-          <span class="card-label">Total rows</span>
-          <span class="card-value" id="total-rows">–</span>
-        </div>
-        <div class="card">
-          <span class="card-label">Columns</span>
-          <span class="card-value" id="column-count">–</span>
-        </div>
-        <div class="card">
-          <span class="card-label">Default sort</span>
-          <span class="card-value" id="default-sort">–</span>
-        </div>
-      </section>
-
-      <section class="controls">
+      <section class="search-container">
         <form id="toolbar" class="toolbar" autocomplete="off">
-          <div class="input-group">
-            <label for="search">Search question text</label>
+          <div class="search-input-group">
             <input
               type="search"
               id="search"
               name="search"
-              placeholder="Filter by keyword (uses ILIKE)"
+              placeholder="Filter by keyword"
             />
+            <button type="submit" class="primary">Search</button>
           </div>
+          <div class="filter-controls">
+            <div class="input-group">
+              <label for="page-size">Rows per page</label>
+              <select id="page-size" name="pageSize">
+                <option value="25">25</option>
+                <option value="50">50</option>
+                <option value="100" selected>100</option>
+                <option value="250">250</option>
+                <option value="500">500</option>
+              </select>
+            </div>
 
-          <div class="input-group">
-            <label for="page-size">Rows per page</label>
-            <select id="page-size" name="pageSize">
-              <option value="25">25</option>
-              <option value="50">50</option>
-              <option value="100" selected>100</option>
-              <option value="250">250</option>
-              <option value="500">500</option>
-            </select>
-          </div>
+            <div class="input-group">
+              <label for="sort-by">Sort by</label>
+              <select id="sort-by" name="sortBy"></select>
+            </div>
 
-          <div class="input-group">
-            <label for="sort-by">Sort by</label>
-            <select id="sort-by" name="sortBy"></select>
-          </div>
-
-          <div class="input-group">
-            <label for="sort-dir">Sort direction</label>
-            <select id="sort-dir" name="sortDir">
-              <option value="asc" selected>Ascending</option>
-              <option value="desc">Descending</option>
-            </select>
-          </div>
-
-          <div class="toolbar-actions">
-            <button type="submit" class="primary">Apply</button>
+            <div class="input-group">
+              <label for="sort-dir">Sort direction</label>
+              <select id="sort-dir" name="sortDir">
+                <option value="asc" selected>Ascending</option>
+                <option value="desc">Descending</option>
+              </select>
+            </div>
             <button type="button" id="refresh" class="secondary">Refresh CSV</button>
           </div>
         </form>
       </section>
 
-      <section class="table-wrapper">
+      <section class="results-container">
         <div class="table-meta">
           <span id="pagination"></span>
           <span id="filtered-count"></span>
@@ -91,7 +71,7 @@
             <thead></thead>
             <tbody>
               <tr>
-                <td colspan="6" class="placeholder">Loading dataset…</td>
+                <td colspan="2" class="placeholder">Loading dataset…</td>
               </tr>
             </tbody>
           </table>

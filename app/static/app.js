@@ -7,11 +7,9 @@ const state = {
 };
 
 let columns = [];
+let totalRows = 0;
 
 const elements = {
-  totalRows: document.getElementById('total-rows'),
-  columnCount: document.getElementById('column-count'),
-  defaultSort: document.getElementById('default-sort'),
   pagination: document.getElementById('pagination'),
   filteredCount: document.getElementById('filtered-count'),
   tableHead: document.querySelector('#data-table thead'),
@@ -19,6 +17,7 @@ const elements = {
   prevButton: document.getElementById('prev-page'),
   nextButton: document.getElementById('next-page'),
   csvPath: document.getElementById('csv-path'),
+  totalQuestions: document.getElementById('total-questions'),
   pageSize: document.getElementById('page-size'),
   sortBy: document.getElementById('sort-by'),
   sortDir: document.getElementById('sort-dir'),
@@ -37,46 +36,113 @@ function renderColumns(colDefs) {
   columns.forEach((column) => {
     const option = document.createElement('option');
     option.value = column.name;
-    option.textContent = `${column.name} (${column.type})`;
+    option.textContent = column.name;
     elements.sortBy.appendChild(option);
   });
 }
 
 function renderTable(rows) {
+  elements.tableBody.innerHTML = '';
+  elements.tableHead.innerHTML = '';
+
   if (!columns.length) {
-    elements.tableHead.innerHTML = '';
     elements.tableBody.innerHTML = '<tr><td class="placeholder">No metadata available.</td></tr>';
     return;
   }
 
   const headRow = document.createElement('tr');
-  columns.forEach((column) => {
+  const indexHeader = document.createElement('th');
+  indexHeader.scope = 'col';
+  indexHeader.className = 'index-cell';
+  indexHeader.textContent = '#';
+  headRow.appendChild(indexHeader);
+
+  const questionColumn = columns.find((c) => c.name.toLowerCase() === 'question');
+  if (questionColumn) {
     const th = document.createElement('th');
-    th.textContent = column.name;
+    th.scope = 'col';
+    th.className = 'question-cell';
+    th.textContent = questionColumn.name;
     headRow.appendChild(th);
-  });
-  elements.tableHead.innerHTML = '';
+  }
   elements.tableHead.appendChild(headRow);
 
   if (!rows.length) {
-    elements.tableBody.innerHTML = '<tr><td class="placeholder" colspan="' + columns.length + '">No rows match the current filters.</td></tr>';
+    elements.tableBody.innerHTML = '<tr><td class="placeholder" colspan="2">No rows match the current filters.</td></tr>';
     return;
   }
 
   const fragment = document.createDocumentFragment();
-  rows.forEach((row) => {
+  const startIndex = (state.page - 1) * state.pageSize;
+
+  rows.forEach((row, i) => {
     const tr = document.createElement('tr');
-    columns.forEach((column) => {
+    tr.className = 'data-row';
+    tr.dataset.rowIndex = i;
+    tr.title = 'Click for more info';
+
+    const indexCell = document.createElement('td');
+    indexCell.className = 'index-cell';
+    indexCell.innerHTML = `<span>${formatNumber(startIndex + i + 1)}</span>`;
+    tr.appendChild(indexCell);
+
+    if (questionColumn) {
       const td = document.createElement('td');
-      const value = row[column.name];
+      td.className = 'question-cell';
+      const value = row[questionColumn.name];
       td.textContent = value === null || value === undefined ? '' : value;
       tr.appendChild(td);
-    });
+    }
     fragment.appendChild(tr);
   });
-  elements.tableBody.innerHTML = '';
   elements.tableBody.appendChild(fragment);
+
+  // Re-attach event listeners for expandable rows
+  elements.tableBody.querySelectorAll('.data-row').forEach((tr) => {
+    tr.addEventListener('click', () => toggleRowDetails(tr, rows));
+  });
 }
+
+function toggleRowDetails(clickedRow, rows) {
+  const rowIndex = parseInt(clickedRow.dataset.rowIndex, 10);
+  const rowData = rows[rowIndex];
+  const existingDetailsRow = clickedRow.nextElementSibling;
+
+  if (existingDetailsRow && existingDetailsRow.classList.contains('details-row')) {
+    existingDetailsRow.remove();
+    return;
+  }
+
+  // Remove any other open details rows
+  const openDetailsRows = document.querySelectorAll('.details-row');
+  openDetailsRows.forEach((row) => row.remove());
+
+  const detailsRow = document.createElement('tr');
+  detailsRow.className = 'details-row';
+  const detailsCell = document.createElement('td');
+  detailsCell.colSpan = 2;
+
+  const detailsContent = document.createElement('dl');
+  detailsContent.className = 'details-content';
+
+  const questionColumnName = columns.find((c) => c.name.toLowerCase() === 'question')?.name;
+
+  columns.forEach((col) => {
+    if (col.name !== questionColumnName) {
+      const dt = document.createElement('dt');
+      dt.textContent = col.name;
+      const dd = document.createElement('dd');
+      dd.textContent = rowData[col.name];
+      detailsContent.appendChild(dt);
+      detailsContent.appendChild(dd);
+    }
+  });
+
+  detailsCell.appendChild(detailsContent);
+  detailsRow.appendChild(detailsCell);
+  clickedRow.parentNode.insertBefore(detailsRow, clickedRow.nextSibling);
+}
+
 
 function updateStats(metadata) {
   elements.totalRows.textContent = metadata.row_count ? formatNumber(metadata.row_count) : '0';
@@ -85,7 +151,7 @@ function updateStats(metadata) {
 }
 
 function updatePagination(payload) {
-  const { page, page_size: pageSize, total_rows: totalRows, total_filtered: totalFiltered } = payload;
+  const { page, page_size: pageSize, total_filtered: totalFiltered } = payload;
   const firstRow = totalFiltered === 0 ? 0 : (page - 1) * pageSize + 1;
   const lastRow = Math.min(page * pageSize, totalFiltered);
 
@@ -115,7 +181,9 @@ async function fetchJSON(url) {
 async function loadMetadata() {
   try {
     const metadata = await fetchJSON('/api/metadata');
-    updateStats(metadata);
+    totalRows = metadata.row_count || 0;
+    elements.totalQuestions.textContent = formatNumber(totalRows);
+
     if (metadata.csv_display_name) {
       elements.csvPath.textContent = metadata.csv_display_name;
     }
@@ -147,10 +215,11 @@ async function loadRows() {
   try {
     const payload = await fetchJSON(`/api/rows?${params.toString()}`);
     renderTable(payload.rows || []);
-    updatePagination(payload);
+    updatePagination({ ...payload, page_size: state.pageSize });
   } catch (error) {
     console.error(error);
-    elements.tableBody.innerHTML = `<tr><td class="placeholder">${error.message}</td></tr>`;
+    const colSpan = columns.length > 0 ? columns.length : 1;
+    elements.tableBody.innerHTML = `<tr><td class="placeholder" colspan="${colSpan}">${error.message}</td></tr>`;
     elements.pagination.textContent = '';
     elements.filteredCount.textContent = '';
   }
@@ -182,13 +251,7 @@ async function handleRefresh() {
   elements.refresh.textContent = 'Refreshing…';
   try {
     await fetchJSON('/api/refresh');
-    const metadata = await loadMetadata();
-    if (metadata.default_sort) {
-      elements.sortBy.value = metadata.default_sort;
-      state.sortBy = metadata.default_sort;
-    }
-    state.page = 1;
-    await loadRows();
+    await bootstrap();
   } catch (error) {
     console.error(error);
   } finally {

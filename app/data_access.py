@@ -16,6 +16,7 @@ class DatasetGateway:
         self.csv_path = csv_path
         self._lock = Lock()
         self._conn = duckdb.connect(database=":memory:")
+        self._conn.execute("SET GLOBAL memory_limit='8GB'")
         self._register_view()
         self._columns = self._fetch_columns()
         self._row_count: Optional[int] = None
@@ -29,9 +30,11 @@ class DatasetGateway:
         """Register the CSV as an in-memory DuckDB view."""
 
         with self._lock:
+            # DuckDB doesn't like prepared statements for read_csv_auto
+            # so we'll escape the path and embed it directly.
+            escaped_csv_path = str(self.csv_path).replace("'", "''")
             self._conn.execute(
-                "CREATE OR REPLACE VIEW dataset AS SELECT * FROM read_csv_auto(?, HEADER=TRUE, SAMPLE_SIZE=-1)",
-                [str(self.csv_path)],
+                f"CREATE OR REPLACE VIEW dataset AS SELECT * FROM read_csv_auto('{escaped_csv_path}', HEADER=TRUE, SAMPLE_SIZE=100000)"
             )
 
     def _fetch_columns(self) -> List[Dict[str, Any]]:
@@ -117,10 +120,12 @@ class DatasetGateway:
         if search:
             if not self._searchable_column:
                 raise ValueError("Search is not available because the CSV does not expose a 'question' column.")
-            where_clause = f"WHERE {duckdb.escape_identifier(self._searchable_column)} ILIKE ?"
+            # Use double quotes to escape column names, as duckdb.escape_identifier is not available
+            where_clause = f'WHERE "{self._searchable_column}" ILIKE ?'
             params.append(f"%{search}%")
 
-        order_clause = f"ORDER BY {duckdb.escape_identifier(sort_column)} {sort_direction.upper()}"
+        # Use double quotes to escape column names, as duckdb.escape_identifier is not available
+        order_clause = f'ORDER BY "{sort_column}" {sort_direction.upper()}'
         limit_clause = "LIMIT ? OFFSET ?"
         params.extend([limit, offset])
 
@@ -135,7 +140,9 @@ class DatasetGateway:
         records = [dict(zip(column_headers, row)) for row in rows]
 
         if search:
-            count_query = f"SELECT COUNT(*) FROM dataset {where_clause}".strip()
+            # Use double quotes to escape column names here as well
+            where_clause_for_count = f'WHERE "{self._searchable_column}" ILIKE ?'
+            count_query = f"SELECT COUNT(*) FROM dataset {where_clause_for_count}".strip()
             count_params = params[: len(params) - 2]  # remove limit & offset
             with self._lock:
                 filtered_total = self._conn.execute(count_query, count_params).fetchone()[0]
