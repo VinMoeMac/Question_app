@@ -15,7 +15,13 @@ class DatasetGateway:
     def __init__(self, csv_path: Path):
         self.csv_path = csv_path
         self._lock = Lock()
-        self._conn = duckdb.connect(database=":memory:")
+
+        # Use a file-based database to allow DuckDB to spill to disk if memory is low.
+        # This is crucial for handling large datasets during startup.
+        db_path = "data/app.db"
+        Path("data").mkdir(exist_ok=True)
+        self._conn = duckdb.connect(database=db_path, read_only=False)
+
         self._conn.execute("SET GLOBAL memory_limit='8GB'")
         self._register_view()
         self._columns = self._fetch_columns()
