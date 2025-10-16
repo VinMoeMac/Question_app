@@ -15,7 +15,7 @@ class Settings:
     csv_path: Path
     default_page_size: int = 100
     max_page_size: int = 500
-    app_title: str = "FineWeb Question Explorer"
+    app_title: str = "BLISS: Internet-scale Questions Dataset"
 
     @property
     def csv_display_name(self) -> str:
