@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{{ settings.app_title }}</title>
+    <link rel="stylesheet" href="/static/styles.css" />
+  </head>
+  <body>
+    <header class="page-header">
+      <div>
+        <h1>{{ settings.app_title }}</h1>
+        <p class="subtitle">
+          Explore tens of millions of question-focused rows distilled from billions of
+          FineWeb documents. Optimised for large CSV files generated with the Stage 1
+          and Stage 2 pipelines.
+        </p>
+      </div>
+      <div class="dataset-meta">
+        <span class="label">Active CSV:</span>
+        <span class="value" id="csv-path">{{ settings.csv_display_name }}</span>
+      </div>
+    </header>
+
+    <main>
+      <section class="info-panel" id="stats">
+        <div class="card">
+          <span class="card-label">Total rows</span>
+          <span class="card-value" id="total-rows">–</span>
+        </div>
+        <div class="card">
+          <span class="card-label">Columns</span>
+          <span class="card-value" id="column-count">–</span>
+        </div>
+        <div class="card">
+          <span class="card-label">Default sort</span>
+          <span class="card-value" id="default-sort">–</span>
+        </div>
+      </section>
+
+      <section class="controls">
+        <form id="toolbar" class="toolbar" autocomplete="off">
+          <div class="input-group">
+            <label for="search">Search question text</label>
+            <input
+              type="search"
+              id="search"
+              name="search"
+              placeholder="Filter by keyword (uses ILIKE)"
+            />
+          </div>
+
+          <div class="input-group">
+            <label for="page-size">Rows per page</label>
+            <select id="page-size" name="pageSize">
+              <option value="25">25</option>
+              <option value="50">50</option>
+              <option value="100" selected>100</option>
+              <option value="250">250</option>
+              <option value="500">500</option>
+            </select>
+          </div>
+
+          <div class="input-group">
+            <label for="sort-by">Sort by</label>
+            <select id="sort-by" name="sortBy"></select>
+          </div>
+
+          <div class="input-group">
+            <label for="sort-dir">Sort direction</label>
+            <select id="sort-dir" name="sortDir">
+              <option value="asc" selected>Ascending</option>
+              <option value="desc">Descending</option>
+            </select>
+          </div>
+
+          <div class="toolbar-actions">
+            <button type="submit" class="primary">Apply</button>
+            <button type="button" id="refresh" class="secondary">Refresh CSV</button>
+          </div>
+        </form>
+      </section>
+
+      <section class="table-wrapper">
+        <div class="table-meta">
+          <span id="pagination"></span>
+          <span id="filtered-count"></span>
+        </div>
+        <div class="table-container">
+          <table id="data-table">
+            <thead></thead>
+            <tbody>
+              <tr>
+                <td colspan="6" class="placeholder">Loading dataset…</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="pager">
+          <button type="button" id="prev-page" disabled>Previous</button>
+          <button type="button" id="next-page" disabled>Next</button>
+        </div>
+      </section>
+
+      <section class="pipeline">
+        <h2>Acquisition pipeline</h2>
+        <p>
+          The dataset loaded into this explorer is built with a two-stage extraction
+          and filtering workflow executed on Google Cloud resources:
+        </p>
+        <div class="pipeline-grid">
+          <article>
+            <h3>Stage 1 – Question extraction</h3>
+            <p>
+              Streams FineWeb parquet shards either from local storage or directly
+              from <abbr title="Google Cloud Storage">GCS</abbr>, extracting
+              question-like sentences with lightweight heuristics. Output is written
+              incrementally to CSV with crash-safe checkpoints.
+            </p>
+            <pre class="code-block"><code>python stage1_extract_from_parquet.py \
+  --input-dir gs://.../fineweb/data/CC-MAIN-2024-38 \
+  --output gs://.../results/questions_2024_38.csv \
+  --resume</code></pre>
+          </article>
+          <article>
+            <h3>Stage 2 – Recommendation filter</h3>
+            <p>
+              Processes downloaded CSV batches locally with multiprocessing to keep
+              disks hot, enriches each row with industry tags, and keeps only
+              context-independent recommendation questions suitable for shopping and
+              research applications.
+            </p>
+            <pre class="code-block"><code>python stage2_filter_no_scores_parallel_local.py \
+  --input-dir ~/results_input \
+  --output ~/results_output/filtered_all_dumps.csv \
+  --workers 16 \
+  --chunksize 100000</code></pre>
+          </article>
+        </div>
+        <p class="note">
+          Swap the <code>CSV_PATH</code> environment variable to point this UI at any
+          stage output. DuckDB loads the file lazily, so even 10M+ rows remain
+          interactive.
+        </p>
+      </section>
+    </main>
+
+    <footer class="page-footer">
+      <p>
+        Built for showcasing large-scale question datasets. Run with
+        <code>uvicorn app.main:app --reload</code> and share the resulting dashboard.
+      </p>
+    </footer>
+
+    <script defer src="/static/app.js"></script>
+  </body>
+</html>

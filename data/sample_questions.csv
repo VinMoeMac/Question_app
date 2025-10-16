@@ -1,0 +1,6 @@
+question_id,doc_id,question,word_count,url,source_id,dump,date,file_path,language,language_score,token_count,concrete_nouns,vague_words,industry
+fw-0001,fw_doc_001,What is the best laptop for deep learning experiments in 2024?,15,https://example.com/deep-learning,abc123,CC-MAIN-2024-38,2024-09-01,batch_001.parquet,en,0.98,512,2,0,tech
+fw-0002,fw_doc_002,Which mirrorless camera should I buy for astrophotography?,11,https://example.com/astro,abc124,CC-MAIN-2024-38,2024-09-02,batch_002.parquet,en,0.95,376,1,0,tech
+fw-0003,fw_doc_010,Are there any good hiking boots recommended for wet climates?,13,https://example.com/hiking,abc200,CC-MAIN-2024-38,2024-09-05,batch_010.parquet,en,0.92,298,0,0,sports
+fw-0004,fw_doc_050,What budget-friendly espresso machine is worth buying for a small studio?,16,https://example.com/espresso,abc400,CC-MAIN-2024-38,2024-09-12,batch_050.parquet,en,0.97,412,0,0,home
+fw-0005,fw_doc_120,Which portable air purifier works best for allergy sufferers?,12,https://example.com/air,abc650,CC-MAIN-2024-38,2024-09-20,batch_120.parquet,en,0.93,265,0,0,home
