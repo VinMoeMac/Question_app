@@ -17,11 +17,7 @@ class DatasetGateway:
         self._lock = Lock()
         self._conn = duckdb.connect(database=":memory:")
         self._conn.execute("SET GLOBAL memory_limit='8GB'")
-        self._register_view()
-        self._columns = self._fetch_columns()
-        self._row_count: Optional[int] = None
-        self._default_sort = self._determine_default_sort()
-        self._searchable_column = self._find_searchable_column()
+        self.refresh()
 
     # ------------------------------------------------------------------
     # private helpers
@@ -81,7 +77,7 @@ class DatasetGateway:
         return self._row_count
 
     def refresh(self) -> None:
-        """Reload the DuckDB view if the CSV has changed."""
+        """Reload the DuckDB view and re-scan the schema."""
 
         self._row_count = None
         self._register_view()
