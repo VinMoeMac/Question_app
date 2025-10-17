@@ -49,6 +49,9 @@ Restart=always
 WantedBy=multi-user.target
 EOL
 
+# Force the app to rebuild its database on restart by deleting the old cache.
+rm -f data/app.db
+
 sudo systemctl daemon-reload
 sudo systemctl enable question-app
 sudo systemctl start question-app
