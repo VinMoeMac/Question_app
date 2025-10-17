@@ -20,7 +20,7 @@ mkdir -p data
 echo ">>> Downloading dataset from GCS..."
 # This requires the VM to have read permissions for the GCS bucket.
 # Compute Engine default service accounts usually have this for buckets in the same project.
-gcloud storage cp gs://vincent-fineweb-data/results/results_filtered_STRICT_deduped.csv data/source.csv
+gcloud storage cp gs://vincent-fineweb-data/results/shopping_intent_questions_DEDUPLICATED.csv data/source.csv
 
 # 3. Set up the application environment
 # -------------------------------------
